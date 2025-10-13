@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Simulasi CIDR & VLSM — DevGlass Edition</title>
+
+<!-- Google Font: Fira Code -->
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --gap: 6px;
+    --col-width: 88px;
+    --bg: #0e1621;
+    --card: rgba(255,255,255,0.08);
+    --text: #e8eef5;
+    --highlight: #00dfd8;
+    --shadow: rgba(0,0,0,0.4);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Fira Code', monospace;
+    background: radial-gradient(circle at top, #1e293b, #0e1621);
+    color: var(--text);
+    padding: 32px 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  h1 {
+    font-size: 24px;
+    margin-bottom: 14px;
+    background: linear-gradient(90deg,#00dfd8,#00b4ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 0.5px;
+    text-shadow: 0 0 14px rgba(0,255,255,0.15);
+  }
+
+  p.info {
+    max-width: 720px;
+    text-align: center;
+    margin-bottom: 20px;
+    background: rgba(255,255,255,0.06);
+    color: #cbd5e1;
+    font-size: 13px;
+    border-left: 3px solid var(--highlight);
+    padding: 10px 16px;
+    border-radius: 8px;
+    backdrop-filter: blur(6px);
+  }
+
+  .grid-wrap {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(12px);
+    border-radius: 14px;
+    padding: 18px;
+    box-shadow: 0 8px 28px var(--shadow);
+    transition: all .3s ease;
+  }
+
+  .grid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: var(--col-width);
+    gap: var(--gap);
+    align-items: start;
+    height: 420px;
+  }
+
+  .col-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
+    width: var(--col-width);
+  }
+
+  /* warna border */
+  .col-0 .block { border: 2px solid #ef4444; }
+  .col-1 .block { border: 2px solid #8b5cf6; }
+  .col-2 .block { border: 2px solid #22c55e; }
+  .col-3 .block { border: 2px solid #f97316; }
+  .col-4 .block { border: 2px solid #38bdf8; }
+
+  .block {
+    background: var(--card);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-weight: 600;
+    font-size: 11.5px;
+    cursor: pointer;
+    color: var(--text);
+    transition: all .18s ease;
+    user-select: none;
+    position: relative;
+    line-height: 1.4;
+  }
+
+  .block:hover {
+    transform: translateY(-2px);
+    background: rgba(255,255,255,0.12);
+    box-shadow: 0 4px 12px rgba(0,255,255,0.08);
+  }
+
+  .block.active {
+    background: linear-gradient(145deg, rgba(0,255,200,0.25), rgba(255,255,255,0.1));
+    box-shadow: 0 0 18px rgba(0,255,200,0.25);
+  }
+
+  .block.disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+    filter: grayscale(0.4);
+  }
+
+  .labels {
+    display: flex;
+    gap: var(--gap);
+    margin-bottom: 10px;
+    justify-content: center;
+  }
+
+  .labels .colLabel {
+    width: var(--col-width);
+    text-align: center;
+    font-weight: 700;
+    font-size: 12.5px;
+    color: #94a3b8;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    padding: 6px 0;
+    backdrop-filter: blur(5px);
+  }
+
+  .controls {
+    margin-top: 18px;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 820px;
+    align-items: center;
+  }
+
+  button {
+    font-family: 'Fira Code', monospace;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.08);
+    color: var(--text);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s ease;
+  }
+
+  button:hover {
+    background: rgba(0,255,255,0.2);
+    color: black;
+    transform: translateY(-1px);
+  }
+
+  .info-legend {
+    font-size: 12px;
+    color: #e2e8f0;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+
+  .tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    padding: 5px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    display: none;
+    white-space: nowrap;
+  }
+
+  .block:hover .tooltip { display: block; }
+
+  footer {
+    margin-top: 32px;
+    font-size: 12px;
+    text-align: center;
+    color: #94a3b8;
+    opacity: 0.8;
+  }
+
+  footer .heart {
+    color: #ff4d6d;
+    font-weight: bold;
+  }
+
+  footer .quote {
+    font-style: italic;
+    display: block;
+    margin-top: 4px;
+    color: #64748b;
+  }
+
+  @media(max-width:600px){
+    :root { --col-width: 64px; }
+    .grid { height: 360px; }
+    h1 { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+
+  <h1>Simulasi Subnetting — YLiaDev Edition</h1>
+  <p class="info">
+    Klik 1 blok untuk mengalokasikan subnet. Setiap blok punya rentang /28 yang unik.
+    Blok yang tumpang tindih akan dikunci otomatis. Tekan <b>Reset</b> untuk mengulang.
+  </p>
+
+  <div class="labels" id="topLabels"></div>
+
+  <div class="grid-wrap">
+    <div id="grid" class="grid"></div>
+  </div>
+
+  <div class="controls">
+    <button id="resetBtn">Reset</button>
+    <div class="info-legend">
+      Legend:
+      <span style="color:#ef4444">/24</span>,
+      <span style="color:#8b5cf6">/25</span>,
+      <span style="color:#22c55e">/26</span>,
+      <span style="color:#f97316">/27</span>,
+      <span style="color:#38bdf8">/28</span>
+    </div>
+  </div>
+
+  <footer>
+    © 2025 <b>YureieYlia</b> — crafted with <span class="heart">❤</span> & logic.  
+    <span class="quote">"Kayak subnet ya, mantan juga... udah kealokasi, gak bisa di-assign lagi 😭"</span>
+    <span class="quote">"CIDR ngajarin kita tentang batasan, VLSM ngajarin fleksibilitas.
+Tapi sayangnya… mantan ngajarin realitas 😭💔"</span>
+        <span class="quote"> “Kadang kita nggak bisa ‘assign’ cinta yang besar ke seseorang... 
+      karena hatinya udah ‘teralokasi’ buat yang lebih kecil tapi duluan.” </span>
+  </footer>
+
+<script>
+const columns = [
+  {prefix:'/24', size:256, cls:'col-0'},
+  {prefix:'/25', size:128, cls:'col-1'},
+  {prefix:'/26', size:64,  cls:'col-2'},
+  {prefix:'/27', size:32,  cls:'col-3'},
+  {prefix:'/28', size:16,  cls:'col-4'}
+];
+
+const TOTAL_ROWS = 16;
+const GAP = 6;
+const gridEl = document.getElementById('grid');
+const topLabels = document.getElementById('topLabels');
+let GRID_HEIGHT = 420;
+
+gridEl.style.height = GRID_HEIGHT + 'px';
+let blocks = [];
+let occupiedRows = new Array(TOTAL_ROWS).fill(false);
+
+columns.forEach(c=>{
+  const d=document.createElement('div');
+  d.className='colLabel';
+  d.innerHTML=`<div>${c.prefix}</div><div style="font-size:11px">${c.size}</div>`;
+  topLabels.appendChild(d);
+});
+
+function buildGrid(){
+  gridEl.innerHTML='';
+  blocks=[];
+  columns.forEach((col,colIndex)=>{
+    const colContainer=document.createElement('div');
+    colContainer.className=`col-container ${col.cls}`;
+    const blocksPerColumn=256/col.size;
+    const span=TOTAL_ROWS/blocksPerColumn;
+    const totalGaps=(blocksPerColumn-1)*GAP;
+    const availableHeight=GRID_HEIGHT-totalGaps;
+    const eachHeight=Math.floor(availableHeight/blocksPerColumn);
+
+    for(let i=0;i<blocksPerColumn;i++){
+      const startRow=i*span;
+      const endRow=startRow+span;
+      const block=document.createElement('div');
+      block.className='block';
+      block.style.height=eachHeight+'px';
+      block.innerHTML=`
+        <div>${col.prefix}<br><small>${col.size} addr</small></div>
+        <div class="tooltip">Covers /28 rows ${startRow}-${endRow-1}</div>
+      `;
+      colContainer.appendChild(block);
+      blocks.push({el:block,col:colIndex,start:startRow,end:endRow});
+    }
+    gridEl.appendChild(colContainer);
+  });
+  updateUI();
+}
+
+function overlaps(block){
+  for(let r=block.start;r<block.end;r++){
+    if(occupiedRows[r]) return true;
+  }
+  return false;
+}
+
+function selectBlock(b){
+  for(let r=b.start;r<b.end;r++) occupiedRows[r]=true;
+  b.el.classList.add('active');
+  updateUI();
+}
+
+function updateUI(){
+  blocks.forEach(b=>{
+    b.el.onclick=null;
+    if(b.el.classList.contains('active')){
+      b.el.classList.remove('disabled');
+      return;
+    }
+    if(overlaps(b)){
+      b.el.classList.add('disabled');
+    } else {
+      b.el.classList.remove('disabled');
+      b.el.onclick=()=>selectBlock(b);
+    }
+  });
+}
+
+document.getElementById('resetBtn').onclick=()=>{
+  occupiedRows=new Array(TOTAL_ROWS).fill(false);
+  buildGrid();
+};
+
+buildGrid();
+</script>
+</body>
+</html>
